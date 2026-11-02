@@ -1,5 +1,15 @@
 import { gql } from 'graphql-request';
 
+// The event that created or last updated a row, with its block.
+export const eventStampFields = `
+  eventIdx
+  block {
+    blockId
+    datetime
+    hash
+  }
+`;
+
 export const assetFragment = gql`
   fragment AssetFields on Asset {
     id
@@ -15,16 +25,9 @@ export const assetFragment = gql`
     documents {
       totalCount
     }
-    holders {
-      totalCount
-    }
-    nftHolders(filter: { nftIds: { notEqualTo: [] } }) {
-      totalCount
-    }
-    createdBlock {
-      blockId
-      datetime
-      hash
+    holderCount
+    createdEvent {
+      ${eventStampFields}
     }
   }
 `;
@@ -36,11 +39,8 @@ export const venueFragment = gql`
     details
     type
     ownerId
-    type
-    createdBlock {
-      blockId
-      datetime
-      hash
+    createdEvent {
+      ${eventStampFields}
     }
   }
 `;

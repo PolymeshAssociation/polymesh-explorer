@@ -14,11 +14,16 @@ interface CreatedBlockFields {
   hash: string;
 }
 
+export interface EventStamp {
+  eventIdx: number;
+  block: CreatedBlockFields;
+}
+
 // Assets
 export interface AssetNode {
   id: string;
   ticker: string;
-  createdBlock: CreatedBlockFields;
+  createdEvent: EventStamp;
   name: string;
   type: string;
   totalSupply: string;
@@ -30,12 +35,7 @@ export interface AssetNode {
   documents: {
     totalCount: number;
   };
-  holders: {
-    totalCount: number;
-  };
-  nftHolders: {
-    totalCount: number;
-  };
+  holderCount: number;
 }
 
 export interface AssetResponse {
@@ -143,7 +143,7 @@ export interface IdentityListResponse {
 // Venue
 export interface VenueNode {
   id: string;
-  createdBlock: CreatedBlockFields;
+  createdEvent: EventStamp;
   details: string;
   type: string;
   ownerId: string;

@@ -6,6 +6,7 @@ import {
 } from '@/domain/entities/Venue';
 import { venueNodeToVenue } from '@/services/repositories/nodeTransformers';
 import { pageInfoFragment, venueFragment } from './fragments';
+import { padId } from './paddedIds';
 import { PageInfo, VenueListResponse, VenueResponse } from './types';
 
 export class VenueGraphRepo {
@@ -28,7 +29,7 @@ export class VenueGraphRepo {
     `;
 
     const variables = {
-      filter: { id: { equalTo: id } },
+      filter: { id: { equalTo: padId(id) } },
     };
 
     const response = await this.client.request<VenueResponse>(query, variables);
@@ -51,7 +52,7 @@ export class VenueGraphRepo {
       ${venueFragment}
       ${pageInfoFragment}
       query ($first: Int!, $after: Cursor) {
-        venues(first: $first, after: $after, orderBy: CREATED_BLOCK_ID_DESC) {
+        venues(first: $first, after: $after, orderBy: CREATED_EVENT_ID_DESC) {
           totalCount
           pageInfo {
             ...PageInfoFields

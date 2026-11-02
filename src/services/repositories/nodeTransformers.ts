@@ -9,6 +9,7 @@ import { Portfolio } from '@/domain/entities/Portfolio';
 import { PortfolioMovement } from '@/domain/entities/PortfolioMovement';
 import { Venue } from '@/domain/entities/Venue';
 import { hexToUuid } from '../polymesh/hexToUuid';
+import { unpadId } from './paddedIds';
 import {
   AssetHolderNode,
   AssetNode,
@@ -42,10 +43,8 @@ export function assetNodeToAsset({
     ownerDid: asset.owner.did,
     isNftCollection: asset.isNftCollection,
     isDivisible: asset.isDivisible,
-    totalHolders: asset.isNftCollection
-      ? asset.nftHolders.totalCount.toString()
-      : asset.holders.totalCount.toString(),
-    createdAt: new Date(`${asset.createdBlock.datetime}Z`),
+    totalHolders: asset.holderCount.toString(),
+    createdAt: new Date(`${asset.createdEvent.block.datetime}Z`),
     totalDocuments: asset.documents.totalCount.toString(),
     heldAmount: heldAmount
       ? balanceToBigNumber(heldAmount as unknown as Balance).toString()
@@ -88,11 +87,11 @@ export function identityNodeToIdentity(node: IdentityNode): Identity {
 
 export function venueNodeToVenue(node: VenueNode): Venue {
   return {
-    id: node.id,
+    id: unpadId(node.id),
     details: node.details,
     type: node.type,
     ownerId: node.ownerId,
-    createdAt: new Date(`${node.createdBlock.datetime}Z`),
+    createdAt: new Date(`${node.createdEvent.block.datetime}Z`),
   };
 }
 

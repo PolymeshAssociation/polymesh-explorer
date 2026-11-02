@@ -5,11 +5,11 @@ interface AccountNode {
   address: string;
   identityId: string | null;
   createdAt: string;
-  multiSigsByCreatorAccountId: {
+  multiSigs: {
     totalCount: number;
   };
   identity: {
-    primaryAccount: string;
+    primaryAccountId: string | null;
   } | null;
 }
 
@@ -29,16 +29,11 @@ export class AccountGraphRepository {
           nodes {
             address
             identityId
-            multiSigsByCreatorAccountId {
+            multiSigs {
               totalCount
             }
             identity {
-              primaryAccount
-            }
-            createdBlock {
-              blockId
-              datetime
-              hash
+              primaryAccountId
             }
           }
         }
@@ -62,9 +57,9 @@ export class AccountGraphRepository {
     return {
       key: account.address,
       identityDid: account.identityId,
-      isMultisig: account.multiSigsByCreatorAccountId.totalCount > 0,
+      isMultisig: account.multiSigs.totalCount > 0,
       identityRelationship:
-        account.identity?.primaryAccount === account.address
+        account.identity?.primaryAccountId === account.address
           ? 'Primary'
           : 'Secondary',
       isSmartContract: false,
