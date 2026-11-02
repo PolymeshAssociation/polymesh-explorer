@@ -1,7 +1,7 @@
 import { GraphQLClient, gql } from 'graphql-request';
 import { PortfolioMovement } from '@/domain/entities/PortfolioMovement';
 import { portfolioMovementNodeToPortfolioMovement } from '@/services/repositories/nodeTransformers';
-import { pageInfoFragment } from './fragments';
+import { eventStampFields, pageInfoFragment } from './fragments';
 import { PageInfo, PortfolioMovementsResponse } from './types';
 
 export type PortfolioMovementType = 'Fungible' | 'NonFungible';
@@ -11,7 +11,7 @@ export class PortfolioMovementsGraphRepo {
 
   async getPortfolioMovements(
     pageSize: number,
-    portfolioNumber: string,
+    portfolioId: string,
     type: PortfolioMovementType,
     offset: number = 0,
   ): Promise<{
@@ -19,20 +19,19 @@ export class PortfolioMovementsGraphRepo {
     totalCount: number;
     pageInfo: PageInfo;
   }> {
-    const assetDetail = type === 'Fungible' ? 'amount' : 'nftIds';
-
     const query = gql`
       ${pageInfoFragment}
-      query ($pageSize: Int!, $offset: Int!, $portfolioNumber: String!, $type: PortfolioMovementTypeEnum!) {
-        portfolioMovements(
+      query ($pageSize: Int!, $offset: Int!, $portfolioId: String!, $nonFungible: Boolean!) {
+        assetTransactions(
           first: $pageSize
           offset: $offset
-          orderBy: ID_DESC
+          orderBy: CREATED_EVENT_ID_DESC
           filter: {
-            type: { equalTo: $type }
+            isInternalTransfer: { equalTo: true }
+            amount: { isNull: $nonFungible }
             or: [
-              { fromId: { startsWith: $portfolioNumber } }
-              { toId: { startsWith: $portfolioNumber } }
+              { fromPortfolioId: { equalTo: $portfolioId } }
+              { toPortfolioId: { equalTo: $portfolioId } }
             ]
           }
         ) {
@@ -42,16 +41,14 @@ export class PortfolioMovementsGraphRepo {
           }
           nodes {
             id
-            fromAccount
-            fromId
-            from {
+            fromAccountId
+            fromPortfolio {
               identityId
               number
               name
             }
-            toAccount
-            toId
-            to {
+            toAccountId
+            toPortfolio {
               identityId
               number
               name
@@ -60,12 +57,12 @@ export class PortfolioMovementsGraphRepo {
             asset {
               ticker
             }
-            ${assetDetail}
+            amount
+            nftIds
             address
             memo
-            createdBlock {
-              blockId
-              datetime
+            createdEvent {
+              ${eventStampFields}
             }
           }
         }
@@ -75,22 +72,22 @@ export class PortfolioMovementsGraphRepo {
     const variables = {
       pageSize,
       offset,
-      portfolioNumber,
-      type,
+      portfolioId,
+      nonFungible: type === 'NonFungible',
     };
 
     const response = await this.client.request<PortfolioMovementsResponse>(
       query,
       variables,
     );
-    const { portfolioMovements } = response;
+    const { assetTransactions } = response;
 
     return {
-      movements: portfolioMovements.nodes.map(
+      movements: assetTransactions.nodes.map(
         portfolioMovementNodeToPortfolioMovement,
       ),
-      totalCount: portfolioMovements.totalCount,
-      pageInfo: portfolioMovements.pageInfo,
+      totalCount: assetTransactions.totalCount,
+      pageInfo: assetTransactions.pageInfo,
     };
   }
 }

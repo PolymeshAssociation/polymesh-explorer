@@ -31,7 +31,7 @@ export function PortfoliosTab({
     isLoading: isLoadingMovements,
     isFetching: isFetchingMovements,
   } = useListPortfolioMovements({
-    portfolioNumber: selectedPortfolio?.id || '',
+    portfolioId: selectedPortfolio?.id || '',
     type: assetType,
   });
 

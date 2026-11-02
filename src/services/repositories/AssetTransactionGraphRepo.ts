@@ -1,7 +1,7 @@
 import { GraphQLClient, gql } from 'graphql-request';
 import { AssetTransaction } from '@/domain/entities/AssetTransaction';
 import { assetTransactionNodeToAssetTransaction } from '@/services/repositories/nodeTransformers';
-import { pageInfoFragment } from './fragments';
+import { eventStampFields, pageInfoFragment } from './fragments';
 import { AssetTransactionsResponse, PageInfo } from './types';
 
 type FilterType = {
@@ -47,8 +47,8 @@ export class AssetTransactionGraphRepo {
       return {
         filterConditions: `
         or: [
-          {fromAccount: {equalTo: $filterId}}
-          {toAccount: {equalTo: $filterId}}
+          {fromAccountId: {equalTo: $filterId}}
+          {toAccountId: {equalTo: $filterId}}
         ]
         ${amountFilter}
       `,
@@ -106,13 +106,13 @@ export class AssetTransactionGraphRepo {
               ticker
             }
             nftIds
-            datetime
             id
-            createdBlockId
-            extrinsicIdx
-            eventIdx
+            createdEvent {
+              extrinsicIdx
+              ${eventStampFields}
+            }
             eventId
-            toAccount
+            toAccountId
             toIdentityId
             toPortfolioId
             toPortfolio {
@@ -120,7 +120,7 @@ export class AssetTransactionGraphRepo {
               number
               name
             }
-            fromAccount
+            fromAccountId
             fromIdentityId
             fromPortfolioId
             fromPortfolio {

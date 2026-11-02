@@ -106,20 +106,23 @@ export function portfolioMovementNodeToPortfolioMovement(
 ): PortfolioMovement {
   return {
     id: node.id,
-    from: node.from ? getPortfolioParty(node.from) : undefined,
-    fromAccount: node.fromAccount || undefined,
-    to: node.to ? getPortfolioParty(node.to) : undefined,
-    toAccount: node.toAccount || undefined,
+    from: node.fromPortfolio
+      ? getPortfolioParty(node.fromPortfolio)
+      : undefined,
+    fromAccount: node.fromAccountId || undefined,
+    to: node.toPortfolio ? getPortfolioParty(node.toPortfolio) : undefined,
+    toAccount: node.toAccountId || undefined,
     assetId: node.assetId,
     assetTicker: node.asset?.ticker,
     amount:
-      node.amount &&
-      balanceToBigNumber(node.amount as unknown as Balance).toString(),
-    nftIds: node.nftIds,
+      (node.amount &&
+        balanceToBigNumber(node.amount as unknown as Balance).toString()) ||
+      undefined,
+    nftIds: node.nftIds || undefined,
     address: node.address,
-    memo: node.memo,
-    createdAt: new Date(`${node.createdBlock.datetime}Z`),
-    blockId: node.createdBlock.blockId,
+    memo: node.memo || undefined,
+    createdAt: new Date(`${node.createdEvent.block.datetime}Z`),
+    blockId: node.createdEvent.block.blockId.toString(),
   };
 }
 
@@ -130,13 +133,13 @@ export function assetTransactionNodeToAssetTransaction(
     id: node.id,
     assetId: node.assetId,
     assetTicker: node.asset.ticker,
-    fromAccount: node.fromAccount || undefined,
+    fromAccount: node.fromAccountId || undefined,
     fromIdentityId: node.fromIdentityId || undefined,
     fromId: node.fromPortfolioId || undefined,
     from: node.fromPortfolio
       ? getPortfolioParty(node.fromPortfolio)
       : undefined,
-    toAccount: node.toAccount || undefined,
+    toAccount: node.toAccountId || undefined,
     toIdentityId: node.toIdentityId || undefined,
     toId: node.toPortfolioId || undefined,
     to: node.toPortfolio ? getPortfolioParty(node.toPortfolio) : undefined,
@@ -146,14 +149,16 @@ export function assetTransactionNodeToAssetTransaction(
       undefined,
     nftIds: node.nftIds || undefined,
     createdBlock: {
-      blockId: node.createdBlockId,
-      datetime: new Date(`${node.datetime}Z`),
+      blockId: node.createdEvent.block.blockId.toString(),
+      datetime: new Date(`${node.createdEvent.block.datetime}Z`),
     },
-    extrinsicIdx: node.extrinsicIdx,
-    eventIdx: node.eventIdx,
+    extrinsicIdx: node.createdEvent.extrinsicIdx ?? undefined,
+    eventIdx: node.createdEvent.eventIdx,
     eventId: node.eventId,
-    instructionId: node.instructionId || undefined,
-    venueId: node.instruction?.venueId || undefined,
+    instructionId: node.instructionId ? unpadId(node.instructionId) : undefined,
+    venueId: node.instruction?.venueId
+      ? unpadId(node.instruction.venueId)
+      : undefined,
     memo: node.instructionMemo || undefined,
   };
 }

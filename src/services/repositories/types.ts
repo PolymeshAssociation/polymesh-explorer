@@ -9,7 +9,7 @@ export interface RawPortfolio extends Pick<Portfolio, 'name' | 'number'> {
 }
 
 interface CreatedBlockFields {
-  blockId: string;
+  blockId: number;
   datetime: string;
   hash: string;
 }
@@ -162,30 +162,27 @@ export interface VenueListResponse {
 }
 
 // Portfolio
+// A movement is an asset transaction between portfolios of one identity
+// that no instruction made.
 export interface PortfolioMovementNode {
   id: string;
-  fromId: string;
-  from?: RawPortfolio;
-  fromAccount?: string;
-  toId?: string;
-  to?: RawPortfolio;
-  toAccount?: string;
+  fromAccountId: string | null;
+  fromPortfolio: RawPortfolio | null;
+  toAccountId: string | null;
+  toPortfolio: RawPortfolio | null;
   assetId: string;
   asset: {
     ticker: string;
   };
-  amount?: string;
-  nftIds?: string[];
+  amount: string | null;
+  nftIds: string[] | null;
   address: string;
-  memo?: string;
-  createdBlock: {
-    blockId: string;
-    datetime: string;
-  };
+  memo: string | null;
+  createdEvent: EventStamp;
 }
 
 export interface PortfolioMovementsResponse {
-  portfolioMovements: {
+  assetTransactions: {
     totalCount: number;
     pageInfo: PageInfo;
     nodes: PortfolioMovementNode[];
@@ -194,11 +191,11 @@ export interface PortfolioMovementsResponse {
 
 export interface AssetTransactionNode {
   id: string;
-  fromAccount: string | null;
+  fromAccountId: string | null;
   fromIdentityId: string | null;
   fromPortfolioId: string | null;
   fromPortfolio: RawPortfolio | null;
-  toAccount: string | null;
+  toAccountId: string | null;
   toIdentityId: string | null;
   toPortfolioId: string | null;
   toPortfolio: RawPortfolio | null;
@@ -208,16 +205,13 @@ export interface AssetTransactionNode {
   };
   amount: string | null;
   nftIds: string[] | null;
-  datetime: string;
-  createdBlockId: string;
-  extrinsicIdx: number;
-  eventIdx: number;
+  createdEvent: EventStamp & { extrinsicIdx: number | null };
   eventId: string;
   instructionId: string | null;
   instructionMemo: string | null;
   fundingRound: string | null;
   instruction: null | {
-    venueId: string;
+    venueId: string | null;
   };
 }
 
