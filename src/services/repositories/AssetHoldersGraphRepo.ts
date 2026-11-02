@@ -1,8 +1,15 @@
 import { GraphQLClient, gql } from 'graphql-request';
 import { pageInfoFragment } from './fragments';
-import { AssetHoldersResponse, NftHoldersResponse, PageInfo } from './types';
+import {
+  AssetHoldersResponse,
+  NftHoldersResponse,
+  NftsResponse,
+  PageInfo,
+} from './types';
 import { AssetHolder } from '@/domain/entities/AssetHolder';
 import { assetHolderNodeToAssetHolder } from './nodeTransformers';
+
+const NFT_PAGE_SIZE = 100;
 
 export class AssetHoldersGraphRepo {
   constructor(private client: GraphQLClient) {}
@@ -23,7 +30,10 @@ export class AssetHoldersGraphRepo {
           first: $first
           offset: $offset
           orderBy: AMOUNT_DESC
-          filter: { assetId: { equalTo: $assetId } }
+          filter: {
+            assetId: { equalTo: $assetId }
+            amount: { greaterThan: "0" }
+          }
         ) {
           totalCount
           pageInfo {
@@ -51,6 +61,69 @@ export class AssetHoldersGraphRepo {
     };
   }
 
+  // The query service returns at most 100 rows per connection, nested ones
+  // included, so the tokens of a page of holders are read in pages of their own.
+  private async getNftIdsByHolder(
+    assetId: string,
+    dids: string[],
+  ): Promise<Record<string, string[]>> {
+    const query = gql`
+      query HolderNfts(
+        $assetId: String!
+        $dids: [String!]!
+        $first: Int!
+        $offset: Int!
+      ) {
+        nfts(
+          first: $first
+          offset: $offset
+          orderBy: [NFT_ID_ASC]
+          filter: {
+            assetId: { equalTo: $assetId }
+            holding: { identityId: { in: $dids } }
+          }
+        ) {
+          totalCount
+          nodes {
+            nftId
+            holding {
+              identityId
+            }
+          }
+        }
+      }
+    `;
+
+    const fetchPage = (offset: number) =>
+      this.client.request<NftsResponse>(query, {
+        assetId,
+        dids,
+        first: NFT_PAGE_SIZE,
+        offset,
+      });
+
+    const firstPage = await fetchPage(0);
+    const offsets = [];
+    for (
+      let offset = NFT_PAGE_SIZE;
+      offset < firstPage.nfts.totalCount;
+      offset += NFT_PAGE_SIZE
+    ) {
+      offsets.push(offset);
+    }
+    const otherPages = await Promise.all(offsets.map(fetchPage));
+
+    const nftIdsByHolder: Record<string, string[]> = {};
+    [firstPage, ...otherPages].forEach((page) =>
+      page.nfts.nodes.forEach(({ nftId, holding }) => {
+        nftIdsByHolder[holding.identityId] ??= [];
+        nftIdsByHolder[holding.identityId].push(nftId);
+      }),
+    );
+
+    return nftIdsByHolder;
+  }
+
   async getNftHolders(
     assetId: string,
     first: number,
@@ -63,11 +136,14 @@ export class AssetHoldersGraphRepo {
     const query = gql`
       ${pageInfoFragment}
       query NftHolders($first: Int!, $offset: Int!, $assetId: String!) {
-        nftHolders(
+        assetHolders(
           first: $first
           offset: $offset
-          orderBy: NFT_IDS_DESC
-          filter: { assetId: { equalTo: $assetId }, nftIds: { notEqualTo: [] } }
+          orderBy: [NFT_COUNT_DESC, IDENTITY_ID_ASC]
+          filter: {
+            assetId: { equalTo: $assetId }
+            nftCount: { greaterThan: 0 }
+          }
         ) {
           totalCount
           pageInfo {
@@ -75,8 +151,7 @@ export class AssetHoldersGraphRepo {
           }
           nodes {
             identityId
-            assetId
-            nftIds
+            nftCount
           }
         }
       }
@@ -87,15 +162,23 @@ export class AssetHoldersGraphRepo {
       offset,
       assetId,
     });
+    const { nodes } = response.assetHolders;
+
+    const nftIdsByHolder = nodes.length
+      ? await this.getNftIdsByHolder(
+          assetId,
+          nodes.map((node) => node.identityId),
+        )
+      : {};
 
     return {
-      holders: response.nftHolders.nodes.map((node) => ({
+      holders: nodes.map((node) => ({
         identityDid: node.identityId,
-        balance: node.nftIds.length.toString(),
-        nftIds: node.nftIds,
+        balance: node.nftCount.toString(),
+        nftIds: nftIdsByHolder[node.identityId] ?? [],
       })),
-      totalCount: response.nftHolders.totalCount,
-      pageInfo: response.nftHolders.pageInfo,
+      totalCount: response.assetHolders.totalCount,
+      pageInfo: response.assetHolders.pageInfo,
     };
   }
 }

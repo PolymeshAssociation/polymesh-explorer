@@ -167,13 +167,13 @@ export function extrinsicNodeToExtrinsicTransaction(
   node: ExtrinsicNode,
 ): ExtrinsicTransaction {
   return {
-    blockId: node.blockId,
+    blockId: unpadId(node.blockId),
     extrinsicIdx: node.extrinsicIdx,
     address: node.address,
     nonce: node.nonce,
     moduleId: node.moduleId,
     callId: node.callId,
-    paramsTxt: node.paramsTxt,
+    args: node.args,
     success: node.success,
     specVersionId: node.specVersionId,
     extrinsicHash: node.extrinsicHash,

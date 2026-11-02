@@ -70,15 +70,26 @@ export interface AssetHoldersResponse {
 // Nft Holders
 export interface NftHoldersNode {
   identityId: string;
-  nftIds: Array<string>;
-  assetId: string;
+  nftCount: number;
 }
 
 export interface NftHoldersResponse {
-  nftHolders: {
+  assetHolders: {
     totalCount: number;
     pageInfo: PageInfo;
     nodes: NftHoldersNode[];
+  };
+}
+
+export interface NftsResponse {
+  nfts: {
+    totalCount: number;
+    nodes: {
+      nftId: string;
+      holding: {
+        identityId: string;
+      };
+    }[];
   };
 }
 
@@ -231,7 +242,7 @@ export interface ExtrinsicNode {
   nonce: number;
   moduleId: string;
   callId: string;
-  paramsTxt: string;
+  args: Record<string, unknown> | null;
   success: boolean;
   specVersionId: number;
   extrinsicHash: string;

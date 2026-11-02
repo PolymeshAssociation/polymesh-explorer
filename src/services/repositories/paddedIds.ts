@@ -1,4 +1,4 @@
-// Instruction and venue ids are the chain's number zero-padded to 10 digits,
+// Instruction, venue and block ids are the chain's number zero-padded to 10 digits,
 // so they sort as text. Lookups must use the padded form.
 const PADDED_ID_LENGTH = 10;
 
