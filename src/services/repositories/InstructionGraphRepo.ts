@@ -3,6 +3,7 @@ import { DEFAULT_VENUE_ID } from '@/domain/entities/Venue';
 import { SettlementInstructionWithAssets } from '@/domain/entities/SettlementInstruction';
 import { rawInstructiontoSettlementInstruction } from '../transformers/instructionsTransformer';
 import { pageInfoFragment, settlementInstructionFragment } from './fragments';
+import { padId } from './paddedIds';
 import {
   InstructionListResponse,
   InstructionResponse,
@@ -17,8 +18,10 @@ export class InstructionGraphRepo {
   private async getAssetsDetails(instructions: RawInstructionNode[]) {
     const uniqueAssetIds = Array.from(
       new Set(
-        instructions.flatMap(
-          (instruction) => instruction.legs.groupedAggregates[0].keys,
+        instructions.flatMap((instruction) =>
+          instruction.legs.groupedAggregates.flatMap(({ keys }) =>
+            keys.filter((key): key is string => Boolean(key)),
+          ),
         ),
       ),
     );
@@ -62,7 +65,7 @@ export class InstructionGraphRepo {
     `;
 
     const variables = {
-      filter: { id: { equalTo: id } },
+      filter: { id: { equalTo: padId(id) } },
     };
 
     const response = await this.client.request<InstructionResponse>(
@@ -99,8 +102,7 @@ export class InstructionGraphRepo {
       query InstructionByDidQuery(
         $pageSize: Int!
         $offset: Int!
-        $fromId: String!
-        $toId: String!
+        $did: String!
       ) {
         instructions(
           first: $pageSize
@@ -112,8 +114,8 @@ export class InstructionGraphRepo {
                 legs: {
                   some: {
                     or: [
-                      { from: { startsWith: $fromId } }
-                      { to: { startsWith: $toId } }
+                      { fromId: { equalTo: $did } }
+                      { toId: { equalTo: $did } }
                     ]
                   }
                 }
@@ -136,8 +138,7 @@ export class InstructionGraphRepo {
     const variables = {
       pageSize,
       offset,
-      fromId: did,
-      toId: did,
+      did,
     };
 
     const response = await this.client.request<InstructionListResponse>(
@@ -207,7 +208,7 @@ export class InstructionGraphRepo {
     const variables = {
       pageSize,
       offset,
-      venueId,
+      venueId: padId(venueId),
     };
 
     const response = await this.client.request<InstructionListResponse>(

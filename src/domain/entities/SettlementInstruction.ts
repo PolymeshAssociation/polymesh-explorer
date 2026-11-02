@@ -44,7 +44,7 @@ export interface SettlementInstruction {
 }
 
 type RawAffirmationNodeExtended = RawAffirmationNode & {
-  createdAt: Date;
+  affirmedAt?: Date;
 };
 
 export interface SettlementInstructionWithEvents extends SettlementInstruction {

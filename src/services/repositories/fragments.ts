@@ -131,19 +131,19 @@ export const settlementInstructionFragment = gql`
     endAfterBlock
     tradeDate
     valueDate
-    legs {
+    legs(orderBy: LEG_INDEX_ASC) {
       groupedAggregates(groupBy: [ASSET_ID]) {
         keys
       }
       nodes {
         legIndex
         legType
-        from
-        fromAccount
-        fromPortfolio
-        to
-        toAccount
-        toPortfolio
+        fromId
+        fromAccountId
+        fromPortfolioId
+        toId
+        toAccountId
+        toPortfolioId
         assetId
         ticker
         amount
@@ -152,48 +152,37 @@ export const settlementInstructionFragment = gql`
       }
     }
     memo
-    affirmations(orderBy: CREATED_BLOCK_ID_DESC) {
+    affirmations(orderBy: [IS_MEDIATOR_ASC, ID_ASC]) {
       nodes {
-        identity
+        id
+        identityId
+        portfolioId
+        accountId
         isAutomaticallyAffirmed
         isMediator
-        createdBlock {
-          datetime
-        }
-        createdBlockId
         status
-        portfolios
+        updatedEvent {
+          block {
+            datetime
+          }
+        }
       }
     }
     mediators
-    failureReason
-    createdBlock {
-      id
-      blockId
-      datetime
-      hash
-    }
     createdEvent {
       id
       eventId
-      eventIdx
+      ${eventStampFields}
     }
-    updatedBlock {
-      id
-      blockId
-      hash
-      datetime
+    updatedEvent {
+      ${eventStampFields}
     }
-    events {
+    events(orderBy: CREATED_EVENT_ID_ASC) {
       nodes {
         id
         event
-        eventIdx
-        createdBlock {
-          id
-          blockId
-          datetime
-          hash
+        createdEvent {
+          ${eventStampFields}
         }
       }
     }

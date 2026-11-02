@@ -273,32 +273,45 @@ export interface RawInstructionEvent {
   createdBlock: RawBlock;
 }
 
+export interface RawInstructionEventNode {
+  id: string;
+  event: string;
+  createdEvent: EventStamp;
+}
+
 export interface RawLegNode {
   legIndex: number;
   legType: string;
-  from: string | null;
-  fromAccount: string | null;
-  fromPortfolio: number | null;
-  to: string | null;
-  toAccount: string | null;
-  toPortfolio: number | null;
-  assetId: string;
-  ticker: string;
+  fromId: string | null;
+  fromAccountId: string | null;
+  fromPortfolioId: string | null;
+  toId: string | null;
+  toAccountId: string | null;
+  toPortfolioId: string | null;
+  // Null on an off-chain leg, which names its asset by ticker
+  assetId: string | null;
+  ticker: string | null;
   amount: string;
   nftIds: string[] | null;
   addresses: string[];
 }
 
+// One row per holder (a portfolio or an account) on the legs, and one per
+// mediator. Every row exists from the instruction's creation, Pending until
+// its holder affirms.
 export interface RawAffirmationNode {
-  identity: string;
+  id: string;
+  identityId: string;
+  portfolioId: string | null;
+  accountId: string | null;
   isAutomaticallyAffirmed: boolean;
   isMediator: boolean;
-  createdBlock: {
-    datetime: string;
-  };
-  createdBlockId: string;
-  status: string;
-  portfolios: number[] | null;
+  status: 'Pending' | 'Affirmed';
+  updatedEvent: {
+    block: {
+      datetime: string;
+    };
+  } | null;
 }
 
 export interface RawInstructionNode {
@@ -316,7 +329,7 @@ export interface RawInstructionNode {
   legs: {
     nodes: RawLegNode[];
     groupedAggregates: {
-      keys: string[];
+      keys: (string | null)[];
     }[];
   };
   memo: string | null;
@@ -324,16 +337,13 @@ export interface RawInstructionNode {
     nodes: RawAffirmationNode[];
   };
   mediators: string[];
-  failureReason: string | null;
-  createdBlock: RawBlock;
-  createdEvent: {
+  createdEvent: EventStamp & {
     id: string;
     eventId: string;
-    eventIdx: number;
   };
-  updatedBlock: RawBlock;
+  updatedEvent: EventStamp;
   events: {
-    nodes: RawInstructionEvent[];
+    nodes: RawInstructionEventNode[];
   };
 }
 
