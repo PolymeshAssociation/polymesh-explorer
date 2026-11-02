@@ -67,7 +67,7 @@ export function AssetTabTable({
                       value={
                         isOwnedAssets
                           ? asset.totalSupply
-                          : asset.heldAmount || asset.heldNftIds?.length || 0
+                          : asset.heldAmount || asset.heldNftCount || 0
                       }
                     />
                   </TableCell>

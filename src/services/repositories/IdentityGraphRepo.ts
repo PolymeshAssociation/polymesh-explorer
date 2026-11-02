@@ -77,7 +77,7 @@ export class IdentityGraphRepo {
         identities(
           first: $first
           after: $after
-          orderBy: CREATED_BLOCK_ID_DESC
+          orderBy: CREATED_EVENT_ID_DESC
         ) {
           totalCount
           pageInfo {
@@ -131,13 +131,10 @@ export class IdentityGraphRepo {
       );
 
       queries.push(`
-        month${i}: identities(filter: {datetime: { greaterThanOrEqualTo: "${monthStart.toISOString()}", 
-                              lessThanOrEqualTo: "${monthEnd.toISOString()}"}}) {
-          aggregates {
-            distinctCount {
-              did 
-            }
-          }
+        month${i}: identities(filter: {createdEvent: {block: {datetime: {
+                              greaterThanOrEqualTo: "${monthStart.toISOString()}",
+                              lessThanOrEqualTo: "${monthEnd.toISOString()}"}}}}) {
+          totalCount
         }
       `);
     }
@@ -149,9 +146,7 @@ export class IdentityGraphRepo {
     `;
 
     const response =
-      await this.client.request<
-        Record<string, { aggregates: { distinctCount: { did: number } } }>
-      >(query);
+      await this.client.request<Record<string, { totalCount: number }>>(query);
 
     const result = Object.entries(response).map(([key, value]) => {
       const monthIndex = parseInt(key.replace('month', ''), 10);
@@ -165,7 +160,7 @@ export class IdentityGraphRepo {
           month: 'short',
           year: 'numeric',
         }),
-        count: value.aggregates.distinctCount.did,
+        count: value.totalCount,
       };
     });
 

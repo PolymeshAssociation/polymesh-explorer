@@ -93,7 +93,9 @@ export function IdentityTable({
                 <TableCell>{identity.claimsCount}</TableCell>
                 <TableCell>{identity.custodiedPortfoliosCount}</TableCell>
                 <TableCell>
-                  <FormattedDate date={identity.createdAt} />
+                  {identity.createdAt && (
+                    <FormattedDate date={identity.createdAt} />
+                  )}
                 </TableCell>
                 <TableCell>
                   {!isTransactionHistoryFetched ? (

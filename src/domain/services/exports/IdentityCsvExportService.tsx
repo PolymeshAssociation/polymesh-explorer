@@ -45,7 +45,7 @@ export class IdentityCsvExportService {
       },
       {
         header: 'Created At',
-        accessor: (identity) => identity.createdAt,
+        accessor: (identity) => identity.createdAt ?? '',
       },
     ];
   }

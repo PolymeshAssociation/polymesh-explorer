@@ -48,17 +48,22 @@ export const venueFragment = gql`
 export const identityFragment = gql`
   fragment IdentityFields on Identity {
     did
-    primaryAccount
-    secondaryAccounts {
+    primaryAccountId
+    keys(
+      filter: {
+        role: { equalTo: SecondaryKey }
+        validToBlockId: { isNull: true }
+      }
+    ) {
       totalCount
       nodes {
-        address
+        accountId
       }
     }
-    claimsByTargetId {
+    claims {
       totalCount
     }
-    venuesByOwnerId {
+    venues {
       totalCount
     }
     portfolios(filter: { deletedAt: { isNull: true } }) {
@@ -76,31 +81,29 @@ export const identityFragment = gql`
         }
       }
     }
-    assetsByOwnerId(orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]) {
+    assetsOwned(orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]) {
       totalCount
       nodes {
         ...AssetFields
       }
     }
-    heldNfts(orderBy: ASSET_ID_ASC, filter: { nftIds: { notEqualTo: [] } }) {
+    heldNfts: heldAssets(
+      orderBy: ASSET_ID_ASC
+      filter: { nftCount: { greaterThan: 0 } }
+    ) {
       totalCount
       nodes {
-        nftIds
+        nftCount
         asset {
           ...AssetFields
         }
       }
     }
-    portfoliosByCustodianId {
+    custodiedPortfolios {
       totalCount
-      nodes {
-        id
-      }
     }
-    createdBlock {
-      blockId
-      datetime
-      hash
+    createdEvent {
+      ${eventStampFields}
     }
   }
   ${assetFragment}

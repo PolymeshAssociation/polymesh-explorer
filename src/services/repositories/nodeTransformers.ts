@@ -24,11 +24,11 @@ import {
 export function assetNodeToAsset({
   asset,
   heldAmount,
-  heldNftIds,
+  heldNftCount,
 }: {
   asset: AssetNode;
   heldAmount?: string;
-  heldNftIds?: number[];
+  heldNftCount?: number;
 }): Asset {
   return {
     assetId: asset.id,
@@ -49,23 +49,23 @@ export function assetNodeToAsset({
     heldAmount: heldAmount
       ? balanceToBigNumber(heldAmount as unknown as Balance).toString()
       : undefined,
-    heldNftIds,
+    heldNftCount,
   };
 }
 
 export function identityNodeToIdentity(node: IdentityNode): Identity {
   return {
     did: node.did,
-    primaryAccount: node.primaryAccount,
-    secondaryAccounts: node.secondaryAccounts.nodes
-      .filter((account) => account.address !== node.primaryAccount)
-      .map((account) => account.address),
-    createdAt: new Date(`${node.createdBlock.datetime}Z`),
-    claimsCount: node.claimsByTargetId.totalCount,
+    primaryAccount: node.primaryAccountId ?? '',
+    secondaryAccounts: node.keys.nodes.map((key) => key.accountId),
+    createdAt: node.createdEvent
+      ? new Date(`${node.createdEvent.block.datetime}Z`)
+      : undefined,
+    claimsCount: node.claims.totalCount,
     assetsCount: node.heldAssets.totalCount + node.heldNfts.totalCount,
-    venuesCount: node.venuesByOwnerId.totalCount,
+    venuesCount: node.venues.totalCount,
     portfoliosCount: node.portfolios.totalCount,
-    ownedAssets: node.assetsByOwnerId.nodes.map((asset) =>
+    ownedAssets: node.assetsOwned.nodes.map((asset) =>
       assetNodeToAsset({ asset }),
     ),
     heldAssets: node.heldAssets.nodes
@@ -77,11 +77,11 @@ export function identityNodeToIdentity(node: IdentityNode): Identity {
       )
       .concat(
         node.heldNfts.nodes.map((nft) =>
-          assetNodeToAsset({ asset: nft.asset, heldNftIds: nft.nftIds }),
+          assetNodeToAsset({ asset: nft.asset, heldNftCount: nft.nftCount }),
         ),
       ),
-    isCustodian: node.portfoliosByCustodianId.totalCount > 0,
-    custodiedPortfoliosCount: node.portfoliosByCustodianId.totalCount,
+    isCustodian: node.custodiedPortfolios.totalCount > 0,
+    custodiedPortfoliosCount: node.custodiedPortfolios.totalCount,
   };
 }
 

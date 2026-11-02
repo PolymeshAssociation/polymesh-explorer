@@ -85,16 +85,17 @@ export interface NftHoldersResponse {
 // Identity
 export interface IdentityNode {
   did: string;
-  primaryAccount: string;
-  createdBlock: CreatedBlockFields;
-  secondaryAccounts: {
+  primaryAccountId: string | null;
+  // Null when the stamp names an event the index did not store.
+  createdEvent: EventStamp | null;
+  keys: {
     totalCount: number;
-    nodes: { address: string }[];
+    nodes: { accountId: string }[];
   };
-  claimsByTargetId: {
+  claims: {
     totalCount: number;
   };
-  venuesByOwnerId: {
+  venues: {
     totalCount: number;
   };
   portfolios: {
@@ -107,7 +108,7 @@ export interface IdentityNode {
       asset: AssetNode;
     }[];
   };
-  assetsByOwnerId: {
+  assetsOwned: {
     totalCount: number;
     nodes: AssetNode[];
   };
@@ -115,14 +116,11 @@ export interface IdentityNode {
     totalCount: number;
     nodes: {
       asset: AssetNode;
-      nftIds: number[];
+      nftCount: number;
     }[];
   };
-  portfoliosByCustodianId: {
+  custodiedPortfolios: {
     totalCount: number;
-    nodes: {
-      id: string;
-    }[];
   };
 }
 
