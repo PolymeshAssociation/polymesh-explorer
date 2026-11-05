@@ -5,9 +5,6 @@ interface AccountNode {
   address: string;
   identityId: string | null;
   createdAt: string;
-  multiSigs: {
-    totalCount: number;
-  };
   identity: {
     primaryAccountId: string | null;
   } | null;
@@ -19,32 +16,40 @@ interface AccountResponse {
   };
 }
 
+interface AccountWithMultiSigResponse extends AccountResponse {
+  // MultiSig rows whose own account is this one: at most one
+  multiSigs: {
+    totalCount: number;
+  };
+}
+
 export class AccountGraphRepository {
   constructor(private client: GraphQLClient) {}
 
   async findByKey(key: string): Promise<Account | null> {
     const query = gql`
-      query ($filter: AccountFilter!) {
+      query ($filter: AccountFilter!, $address: String!) {
         accounts(filter: $filter, first: 1) {
           nodes {
             address
             identityId
-            multiSigs {
-              totalCount
-            }
             identity {
               primaryAccountId
             }
           }
+        }
+        multiSigs(filter: { accountId: { equalTo: $address } }) {
+          totalCount
         }
       }
     `;
 
     const variables = {
       filter: { address: { equalTo: key } },
+      address: key,
     };
 
-    const response = await this.client.request<AccountResponse>(
+    const response = await this.client.request<AccountWithMultiSigResponse>(
       query,
       variables,
     );
@@ -57,7 +62,7 @@ export class AccountGraphRepository {
     return {
       key: account.address,
       identityDid: account.identityId,
-      isMultisig: account.multiSigs.totalCount > 0,
+      isMultisig: response.multiSigs.totalCount > 0,
       identityRelationship:
         account.identity?.primaryAccountId === account.address
           ? 'Primary'
