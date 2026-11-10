@@ -45,6 +45,47 @@ export const venueFragment = gql`
   }
 `;
 
+interface IdentityAssetList {
+  field: string;
+  args: string;
+  nodeFields: string;
+}
+
+// An identity's asset lists. A nested connection stops at 100 rows without
+// saying so, so the rows past that are read in pages with the same selection.
+export const identityAssetLists = {
+  heldAssets: {
+    field: 'heldAssets',
+    args: 'orderBy: ASSET_ID_ASC, filter: { amount: { greaterThan: "0" } }',
+    nodeFields: 'amount asset { ...AssetFields }',
+  },
+  assetsOwned: {
+    field: 'assetsOwned',
+    args: 'orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]',
+    nodeFields: '...AssetFields',
+  },
+  heldNfts: {
+    field: 'heldAssets',
+    args: 'orderBy: ASSET_ID_ASC, filter: { nftCount: { greaterThan: 0 } }',
+    nodeFields: 'nftCount asset { ...AssetFields }',
+  },
+};
+
+export type IdentityAssetListName = keyof typeof identityAssetLists;
+
+export const identityAssetListSelection = (
+  alias: string,
+  { field, args, nodeFields }: IdentityAssetList,
+  paging = '',
+) => `
+  ${alias}: ${field}(${args} ${paging}) {
+    totalCount
+    nodes {
+      ${nodeFields}
+    }
+  }
+`;
+
 export const identityFragment = gql`
   fragment IdentityFields on Identity {
     did
@@ -69,36 +110,9 @@ export const identityFragment = gql`
     portfolios(filter: { deletedAt: { isNull: true } }) {
       totalCount
     }
-    heldAssets(
-      orderBy: ASSET_ID_ASC
-      filter: { amount: { greaterThan: "0" } }
-    ) {
-      totalCount
-      nodes {
-        amount
-        asset {
-          ...AssetFields
-        }
-      }
-    }
-    assetsOwned(orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]) {
-      totalCount
-      nodes {
-        ...AssetFields
-      }
-    }
-    heldNfts: heldAssets(
-      orderBy: ASSET_ID_ASC
-      filter: { nftCount: { greaterThan: 0 } }
-    ) {
-      totalCount
-      nodes {
-        nftCount
-        asset {
-          ...AssetFields
-        }
-      }
-    }
+    ${Object.entries(identityAssetLists)
+      .map(([alias, list]) => identityAssetListSelection(alias, list))
+      .join('\n')}
     custodiedPortfolios {
       totalCount
     }

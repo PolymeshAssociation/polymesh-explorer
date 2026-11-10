@@ -141,6 +141,10 @@ export interface IdentityResponse {
   };
 }
 
+export interface IdentityAssetListPages {
+  identity: Record<string, { nodes: unknown[] }>;
+}
+
 export interface IdentityListResponse {
   identities: {
     totalCount: number;
