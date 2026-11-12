@@ -18,9 +18,10 @@ export class InstructionGraphRepo {
   private async getAssetsDetails(instructions: RawInstructionNode[]) {
     const uniqueAssetIds = Array.from(
       new Set(
+        // Off-chain legs have no asset id
         instructions.flatMap((instruction) =>
-          instruction.legs.groupedAggregates.flatMap(({ keys }) =>
-            keys.filter((key): key is string => Boolean(key)),
+          instruction.legs.nodes.flatMap(({ assetId }) =>
+            assetId ? [assetId] : [],
           ),
         ),
       ),

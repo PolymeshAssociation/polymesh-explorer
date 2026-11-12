@@ -332,9 +332,6 @@ export interface RawInstructionNode {
   valueDate: string | null;
   legs: {
     nodes: RawLegNode[];
-    groupedAggregates: {
-      keys: (string | null)[];
-    }[];
   };
   memo: string | null;
   affirmations: {
