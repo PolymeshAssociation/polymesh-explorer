@@ -1,11 +1,99 @@
 import { GraphQLClient, gql } from 'graphql-request';
 import { Identity } from '@/domain/entities/Identity';
-import { identityFragment, pageInfoFragment } from './fragments';
-import { IdentityListResponse, IdentityResponse, PageInfo } from './types';
+import {
+  IdentityAssetListName,
+  assetFragment,
+  identityAssetListSelection,
+  identityAssetLists,
+  identityFragment,
+  pageInfoFragment,
+} from './fragments';
+import {
+  IdentityAssetListPages,
+  IdentityListResponse,
+  IdentityNode,
+  IdentityResponse,
+  PageInfo,
+} from './types';
 import { identityNodeToIdentity } from '@/services/repositories/nodeTransformers';
+
+const ASSET_LIST_PAGE_SIZE = 100;
+const ASSET_LIST_PAGES_PER_REQUEST = 10;
 
 export class IdentityGraphRepo {
   constructor(private client: GraphQLClient) {}
+
+  private async withCompleteAssetLists(
+    node: IdentityNode,
+  ): Promise<IdentityNode> {
+    const names = Object.keys(identityAssetLists) as IdentityAssetListName[];
+    const pages = names.flatMap((name) => {
+      const offsets = [];
+      for (
+        let offset = node[name].nodes.length;
+        offset < node[name].totalCount;
+        offset += ASSET_LIST_PAGE_SIZE
+      ) {
+        offsets.push(offset);
+      }
+      return offsets.map((offset) => ({
+        name,
+        offset,
+        alias: `${name}${offset}`,
+      }));
+    });
+
+    if (pages.length === 0) return node;
+
+    const batches = [];
+    for (let i = 0; i < pages.length; i += ASSET_LIST_PAGES_PER_REQUEST) {
+      batches.push(pages.slice(i, i + ASSET_LIST_PAGES_PER_REQUEST));
+    }
+
+    const responses = await Promise.all(
+      batches.map((batch) =>
+        this.client.request<IdentityAssetListPages>(
+          gql`
+            ${assetFragment}
+            query ($did: String!) {
+              identity(id: $did) {
+                ${batch
+                  .map(({ name, offset, alias }) =>
+                    identityAssetListSelection(
+                      alias,
+                      identityAssetLists[name],
+                      `, first: ${ASSET_LIST_PAGE_SIZE}, offset: ${offset}`,
+                    ),
+                  )
+                  .join('\n')}
+              }
+            }
+          `,
+          { did: node.did },
+        ),
+      ),
+    );
+    const pagesByAlias = Object.assign(
+      {},
+      ...responses.map(({ identity }) => identity),
+    );
+
+    return names.reduce<IdentityNode>(
+      (complete, name) => ({
+        ...complete,
+        [name]: {
+          ...node[name],
+          nodes: [
+            ...node[name].nodes,
+            ...pages
+              .filter((page) => page.name === name)
+              .flatMap(({ alias }) => pagesByAlias[alias].nodes),
+          ],
+        },
+      }),
+      node,
+    );
+  }
 
   async findByIdentifier(did: string): Promise<Identity | null> {
     const query = gql`
@@ -33,7 +121,7 @@ export class IdentityGraphRepo {
 
     const identity = identities[0];
 
-    return identityNodeToIdentity(identity);
+    return identityNodeToIdentity(await this.withCompleteAssetLists(identity));
   }
 
   async existsByIdentifier(partialDid: string): Promise<Identity[]> {
@@ -77,7 +165,7 @@ export class IdentityGraphRepo {
         identities(
           first: $first
           after: $after
-          orderBy: CREATED_BLOCK_ID_DESC
+          orderBy: CREATED_EVENT_ID_DESC
         ) {
           totalCount
           pageInfo {
@@ -131,13 +219,10 @@ export class IdentityGraphRepo {
       );
 
       queries.push(`
-        month${i}: identities(filter: {datetime: { greaterThanOrEqualTo: "${monthStart.toISOString()}", 
-                              lessThanOrEqualTo: "${monthEnd.toISOString()}"}}) {
-          aggregates {
-            distinctCount {
-              did 
-            }
-          }
+        month${i}: identities(filter: {createdEvent: {block: {datetime: {
+                              greaterThanOrEqualTo: "${monthStart.toISOString()}",
+                              lessThanOrEqualTo: "${monthEnd.toISOString()}"}}}}) {
+          totalCount
         }
       `);
     }
@@ -149,9 +234,7 @@ export class IdentityGraphRepo {
     `;
 
     const response =
-      await this.client.request<
-        Record<string, { aggregates: { distinctCount: { did: number } } }>
-      >(query);
+      await this.client.request<Record<string, { totalCount: number }>>(query);
 
     const result = Object.entries(response).map(([key, value]) => {
       const monthIndex = parseInt(key.replace('month', ''), 10);
@@ -165,7 +248,7 @@ export class IdentityGraphRepo {
           month: 'short',
           year: 'numeric',
         }),
-        count: value.aggregates.distinctCount.did,
+        count: value.totalCount,
       };
     });
 

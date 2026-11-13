@@ -1,5 +1,15 @@
 import { gql } from 'graphql-request';
 
+// The event that created or last updated a row, with its block.
+export const eventStampFields = `
+  eventIdx
+  block {
+    blockId
+    datetime
+    hash
+  }
+`;
+
 export const assetFragment = gql`
   fragment AssetFields on Asset {
     id
@@ -15,16 +25,9 @@ export const assetFragment = gql`
     documents {
       totalCount
     }
-    holders {
-      totalCount
-    }
-    nftHolders(filter: { nftIds: { notEqualTo: [] } }) {
-      totalCount
-    }
-    createdBlock {
-      blockId
-      datetime
-      hash
+    holderCount
+    createdEvent {
+      ${eventStampFields}
     }
   }
 `;
@@ -36,11 +39,49 @@ export const venueFragment = gql`
     details
     type
     ownerId
-    type
-    createdBlock {
-      blockId
-      datetime
-      hash
+    createdEvent {
+      ${eventStampFields}
+    }
+  }
+`;
+
+interface IdentityAssetList {
+  field: string;
+  args: string;
+  nodeFields: string;
+}
+
+// An identity's asset lists. A nested connection stops at 100 rows without
+// saying so, so the rows past that are read in pages with the same selection.
+export const identityAssetLists = {
+  heldAssets: {
+    field: 'heldAssets',
+    args: 'orderBy: ASSET_ID_ASC, filter: { amount: { greaterThan: "0" } }',
+    nodeFields: 'amount asset { ...AssetFields }',
+  },
+  assetsOwned: {
+    field: 'assetsOwned',
+    args: 'orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]',
+    nodeFields: '...AssetFields',
+  },
+  heldNfts: {
+    field: 'heldAssets',
+    args: 'orderBy: ASSET_ID_ASC, filter: { nftCount: { greaterThan: 0 } }',
+    nodeFields: 'nftCount asset { ...AssetFields }',
+  },
+};
+
+export type IdentityAssetListName = keyof typeof identityAssetLists;
+
+export const identityAssetListSelection = (
+  alias: string,
+  { field, args, nodeFields }: IdentityAssetList,
+  paging = '',
+) => `
+  ${alias}: ${field}(${args} ${paging}) {
+    totalCount
+    nodes {
+      ${nodeFields}
     }
   }
 `;
@@ -48,59 +89,35 @@ export const venueFragment = gql`
 export const identityFragment = gql`
   fragment IdentityFields on Identity {
     did
-    primaryAccount
-    secondaryAccounts {
+    primaryAccountId
+    keys(
+      filter: {
+        role: { equalTo: SecondaryKey }
+        validToBlockId: { isNull: true }
+      }
+    ) {
       totalCount
       nodes {
-        address
+        accountId
       }
     }
-    claimsByTargetId {
+    claims {
       totalCount
     }
-    venuesByOwnerId {
+    venues {
       totalCount
     }
     portfolios(filter: { deletedAt: { isNull: true } }) {
       totalCount
     }
-    heldAssets(
-      orderBy: ASSET_ID_ASC
-      filter: { amount: { greaterThan: "0" } }
-    ) {
+    ${Object.entries(identityAssetLists)
+      .map(([alias, list]) => identityAssetListSelection(alias, list))
+      .join('\n')}
+    custodiedPortfolios {
       totalCount
-      nodes {
-        amount
-        asset {
-          ...AssetFields
-        }
-      }
     }
-    assetsByOwnerId(orderBy: [NAME_ASC, TICKER_ASC, ID_ASC]) {
-      totalCount
-      nodes {
-        ...AssetFields
-      }
-    }
-    heldNfts(orderBy: ASSET_ID_ASC, filter: { nftIds: { notEqualTo: [] } }) {
-      totalCount
-      nodes {
-        nftIds
-        asset {
-          ...AssetFields
-        }
-      }
-    }
-    portfoliosByCustodianId {
-      totalCount
-      nodes {
-        id
-      }
-    }
-    createdBlock {
-      blockId
-      datetime
-      hash
+    createdEvent {
+      ${eventStampFields}
     }
   }
   ${assetFragment}
@@ -128,19 +145,16 @@ export const settlementInstructionFragment = gql`
     endAfterBlock
     tradeDate
     valueDate
-    legs {
-      groupedAggregates(groupBy: [ASSET_ID]) {
-        keys
-      }
+    legs(orderBy: LEG_INDEX_ASC) {
       nodes {
         legIndex
         legType
-        from
-        fromAccount
-        fromPortfolio
-        to
-        toAccount
-        toPortfolio
+        fromId
+        fromAccountId
+        fromPortfolioId
+        toId
+        toAccountId
+        toPortfolioId
         assetId
         ticker
         amount
@@ -149,48 +163,37 @@ export const settlementInstructionFragment = gql`
       }
     }
     memo
-    affirmations(orderBy: CREATED_BLOCK_ID_DESC) {
+    affirmations(orderBy: [IS_MEDIATOR_ASC, ID_ASC]) {
       nodes {
-        identity
+        id
+        identityId
+        portfolioId
+        accountId
         isAutomaticallyAffirmed
         isMediator
-        createdBlock {
-          datetime
-        }
-        createdBlockId
         status
-        portfolios
+        updatedEvent {
+          block {
+            datetime
+          }
+        }
       }
     }
     mediators
-    failureReason
-    createdBlock {
-      id
-      blockId
-      datetime
-      hash
-    }
     createdEvent {
       id
       eventId
-      eventIdx
+      ${eventStampFields}
     }
-    updatedBlock {
-      id
-      blockId
-      hash
-      datetime
+    updatedEvent {
+      ${eventStampFields}
     }
-    events {
+    events(orderBy: CREATED_EVENT_ID_ASC) {
       nodes {
         id
         event
-        eventIdx
-        createdBlock {
-          id
-          blockId
-          datetime
-          hash
+        createdEvent {
+          ${eventStampFields}
         }
       }
     }

@@ -18,7 +18,7 @@ export interface AssetTransaction {
     blockId: string;
     datetime: Date;
   };
-  extrinsicIdx: number;
+  extrinsicIdx?: number;
   eventIdx: number;
   eventId: string;
   instructionId?: string;

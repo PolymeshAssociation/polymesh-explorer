@@ -1,4 +1,7 @@
-import { Account as SdkAccount } from '@polymeshassociation/polymesh-sdk/types';
+import {
+  AccountKeyType,
+  Account as SdkAccount,
+} from '@polymeshassociation/polymesh-sdk/types';
 import { Account, IdentityRelationship } from '@/domain/entities/Account';
 
 interface AccountTypeInfo {
@@ -15,8 +18,8 @@ export function transformAccount(
     key: sdkAccount.address,
     identityDid: did || null,
     identityRelationship: typeInfo.relation as IdentityRelationship,
-    isMultisig: typeInfo.keyType === 'Multisig',
-    isSmartContract: typeInfo.keyType === 'SmartContract',
+    isMultisig: typeInfo.keyType === AccountKeyType.MultiSig,
+    isSmartContract: typeInfo.keyType === AccountKeyType.SmartContract,
     polymeshSdkClass: sdkAccount,
   };
 }

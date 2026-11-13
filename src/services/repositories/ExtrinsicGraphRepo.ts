@@ -33,7 +33,7 @@ export class ExtrinsicGraphRepo {
             nonce
             moduleId
             callId
-            paramsTxt
+            args
             success
             specVersionId
             extrinsicHash
@@ -103,7 +103,7 @@ export class ExtrinsicGraphRepo {
             nonce
             moduleId
             callId
-            paramsTxt
+            args
             success
             specVersionId
             extrinsicHash

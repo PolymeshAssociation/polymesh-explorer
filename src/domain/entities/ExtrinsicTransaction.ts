@@ -5,7 +5,7 @@ export interface ExtrinsicTransaction {
   nonce: number;
   moduleId: string;
   callId: string;
-  paramsTxt: string;
+  args: Record<string, unknown> | null;
   success: boolean;
   specVersionId: number;
   extrinsicHash: string;

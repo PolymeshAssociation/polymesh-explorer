@@ -9,16 +9,21 @@ export interface RawPortfolio extends Pick<Portfolio, 'name' | 'number'> {
 }
 
 interface CreatedBlockFields {
-  blockId: string;
+  blockId: number;
   datetime: string;
   hash: string;
+}
+
+export interface EventStamp {
+  eventIdx: number;
+  block: CreatedBlockFields;
 }
 
 // Assets
 export interface AssetNode {
   id: string;
   ticker: string;
-  createdBlock: CreatedBlockFields;
+  createdEvent: EventStamp;
   name: string;
   type: string;
   totalSupply: string;
@@ -30,12 +35,7 @@ export interface AssetNode {
   documents: {
     totalCount: number;
   };
-  holders: {
-    totalCount: number;
-  };
-  nftHolders: {
-    totalCount: number;
-  };
+  holderCount: number;
 }
 
 export interface AssetResponse {
@@ -70,31 +70,43 @@ export interface AssetHoldersResponse {
 // Nft Holders
 export interface NftHoldersNode {
   identityId: string;
-  nftIds: Array<string>;
-  assetId: string;
+  nftCount: number;
 }
 
 export interface NftHoldersResponse {
-  nftHolders: {
+  assetHolders: {
     totalCount: number;
     pageInfo: PageInfo;
     nodes: NftHoldersNode[];
   };
 }
 
+export interface NftsResponse {
+  nfts: {
+    totalCount: number;
+    nodes: {
+      nftId: string;
+      holding: {
+        identityId: string;
+      };
+    }[];
+  };
+}
+
 // Identity
 export interface IdentityNode {
   did: string;
-  primaryAccount: string;
-  createdBlock: CreatedBlockFields;
-  secondaryAccounts: {
+  primaryAccountId: string | null;
+  // Null when the stamp names an event the index did not store.
+  createdEvent: EventStamp | null;
+  keys: {
     totalCount: number;
-    nodes: { address: string }[];
+    nodes: { accountId: string }[];
   };
-  claimsByTargetId: {
+  claims: {
     totalCount: number;
   };
-  venuesByOwnerId: {
+  venues: {
     totalCount: number;
   };
   portfolios: {
@@ -107,7 +119,7 @@ export interface IdentityNode {
       asset: AssetNode;
     }[];
   };
-  assetsByOwnerId: {
+  assetsOwned: {
     totalCount: number;
     nodes: AssetNode[];
   };
@@ -115,14 +127,11 @@ export interface IdentityNode {
     totalCount: number;
     nodes: {
       asset: AssetNode;
-      nftIds: number[];
+      nftCount: number;
     }[];
   };
-  portfoliosByCustodianId: {
+  custodiedPortfolios: {
     totalCount: number;
-    nodes: {
-      id: string;
-    }[];
   };
 }
 
@@ -130,6 +139,10 @@ export interface IdentityResponse {
   identities: {
     nodes: IdentityNode[];
   };
+}
+
+export interface IdentityAssetListPages {
+  identity: Record<string, { nodes: unknown[] }>;
 }
 
 export interface IdentityListResponse {
@@ -143,7 +156,7 @@ export interface IdentityListResponse {
 // Venue
 export interface VenueNode {
   id: string;
-  createdBlock: CreatedBlockFields;
+  createdEvent: EventStamp;
   details: string;
   type: string;
   ownerId: string;
@@ -164,30 +177,27 @@ export interface VenueListResponse {
 }
 
 // Portfolio
+// A movement is an asset transaction between portfolios of one identity
+// that no instruction made.
 export interface PortfolioMovementNode {
   id: string;
-  fromId: string;
-  from?: RawPortfolio;
-  fromAccount?: string;
-  toId?: string;
-  to?: RawPortfolio;
-  toAccount?: string;
+  fromAccountId: string | null;
+  fromPortfolio: RawPortfolio | null;
+  toAccountId: string | null;
+  toPortfolio: RawPortfolio | null;
   assetId: string;
   asset: {
     ticker: string;
   };
-  amount?: string;
-  nftIds?: string[];
+  amount: string | null;
+  nftIds: string[] | null;
   address: string;
-  memo?: string;
-  createdBlock: {
-    blockId: string;
-    datetime: string;
-  };
+  memo: string | null;
+  createdEvent: EventStamp;
 }
 
 export interface PortfolioMovementsResponse {
-  portfolioMovements: {
+  assetTransactions: {
     totalCount: number;
     pageInfo: PageInfo;
     nodes: PortfolioMovementNode[];
@@ -196,11 +206,11 @@ export interface PortfolioMovementsResponse {
 
 export interface AssetTransactionNode {
   id: string;
-  fromAccount: string | null;
+  fromAccountId: string | null;
   fromIdentityId: string | null;
   fromPortfolioId: string | null;
   fromPortfolio: RawPortfolio | null;
-  toAccount: string | null;
+  toAccountId: string | null;
   toIdentityId: string | null;
   toPortfolioId: string | null;
   toPortfolio: RawPortfolio | null;
@@ -210,16 +220,13 @@ export interface AssetTransactionNode {
   };
   amount: string | null;
   nftIds: string[] | null;
-  datetime: string;
-  createdBlockId: string;
-  extrinsicIdx: number;
-  eventIdx: number;
+  createdEvent: EventStamp & { extrinsicIdx: number | null };
   eventId: string;
   instructionId: string | null;
   instructionMemo: string | null;
   fundingRound: string | null;
   instruction: null | {
-    venueId: string;
+    venueId: string | null;
   };
 }
 
@@ -239,7 +246,7 @@ export interface ExtrinsicNode {
   nonce: number;
   moduleId: string;
   callId: string;
-  paramsTxt: string;
+  args: Record<string, unknown> | null;
   success: boolean;
   specVersionId: number;
   extrinsicHash: string;
@@ -270,32 +277,45 @@ export interface RawInstructionEvent {
   createdBlock: RawBlock;
 }
 
+export interface RawInstructionEventNode {
+  id: string;
+  event: string;
+  createdEvent: EventStamp;
+}
+
 export interface RawLegNode {
   legIndex: number;
   legType: string;
-  from: string | null;
-  fromAccount: string | null;
-  fromPortfolio: number | null;
-  to: string | null;
-  toAccount: string | null;
-  toPortfolio: number | null;
-  assetId: string;
-  ticker: string;
+  fromId: string | null;
+  fromAccountId: string | null;
+  fromPortfolioId: string | null;
+  toId: string | null;
+  toAccountId: string | null;
+  toPortfolioId: string | null;
+  // Null on an off-chain leg, which names its asset by ticker
+  assetId: string | null;
+  ticker: string | null;
   amount: string;
   nftIds: string[] | null;
   addresses: string[];
 }
 
+// One row per holder (a portfolio or an account) on the legs, and one per
+// mediator. Every row exists from the instruction's creation, Pending until
+// its holder affirms.
 export interface RawAffirmationNode {
-  identity: string;
+  id: string;
+  identityId: string;
+  portfolioId: string | null;
+  accountId: string | null;
   isAutomaticallyAffirmed: boolean;
   isMediator: boolean;
-  createdBlock: {
-    datetime: string;
-  };
-  createdBlockId: string;
-  status: string;
-  portfolios: number[] | null;
+  status: 'Pending' | 'Affirmed';
+  updatedEvent: {
+    block: {
+      datetime: string;
+    };
+  } | null;
 }
 
 export interface RawInstructionNode {
@@ -312,25 +332,19 @@ export interface RawInstructionNode {
   valueDate: string | null;
   legs: {
     nodes: RawLegNode[];
-    groupedAggregates: {
-      keys: string[];
-    }[];
   };
   memo: string | null;
   affirmations: {
     nodes: RawAffirmationNode[];
   };
   mediators: string[];
-  failureReason: string | null;
-  createdBlock: RawBlock;
-  createdEvent: {
+  createdEvent: EventStamp & {
     id: string;
     eventId: string;
-    eventIdx: number;
   };
-  updatedBlock: RawBlock;
+  updatedEvent: EventStamp;
   events: {
-    nodes: RawInstructionEvent[];
+    nodes: RawInstructionEventNode[];
   };
 }
 

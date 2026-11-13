@@ -16,12 +16,12 @@ export type UseListPortfolioMovementsReturn = PaginatedData<
 >;
 
 interface UseListPortfolioMovementsParams {
-  portfolioNumber: string;
+  portfolioId: string;
   type: AssetTypeSelected;
 }
 
 export function useListPortfolioMovements({
-  portfolioNumber,
+  portfolioId,
   type,
 }: UseListPortfolioMovementsParams): UseQueryResult<UseListPortfolioMovementsReturn> {
   const { graphQlClient } = usePolymeshSdkService();
@@ -42,7 +42,7 @@ export function useListPortfolioMovements({
     try {
       const result = await portfolioMovementsRepo.getPortfolioMovements(
         paginationController.paginationInfo.pageSize,
-        portfolioNumber,
+        portfolioId,
         type as PortfolioMovementType,
         paginationController.paginationInfo.offset,
       );
@@ -60,13 +60,13 @@ export function useListPortfolioMovements({
       customReportError(e);
       throw e;
     }
-  }, [portfolioMovementsRepo, paginationController, portfolioNumber, type]);
+  }, [portfolioMovementsRepo, paginationController, portfolioId, type]);
 
   return useQuery<PortfolioMovement[], Error, UseListPortfolioMovementsReturn>({
     queryKey: [
       'useListPortfolioMovements',
       graphQlClient,
-      portfolioNumber,
+      portfolioId,
       type,
       paginationController.paginationInfo.pageSize,
       paginationController.paginationInfo.offset,
@@ -79,6 +79,6 @@ export function useListPortfolioMovements({
       }),
       [paginationController],
     ),
-    enabled: !!graphQlClient && !!portfolioMovementsRepo && !!portfolioNumber,
+    enabled: !!graphQlClient && !!portfolioMovementsRepo && !!portfolioId,
   });
 }
